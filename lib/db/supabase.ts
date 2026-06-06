@@ -20,8 +20,12 @@ export function getSupabaseUrl(): string | undefined {
   );
 }
 
+/** 服务端密钥：legacy service_role 或新版 secret key，不能用 publishable */
 export function getSupabaseServiceRoleKey(): string | undefined {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.SUPABASE_SECRET_KEY?.trim()
+  );
 }
 
 export function isSupabaseEnabled(): boolean {
@@ -31,14 +35,14 @@ export function isSupabaseEnabled(): boolean {
 export function assertRemoteStorageConfigured(action = "读写数据"): void {
   if (!isServerlessEnv() || isSupabaseEnabled()) return;
   throw new Error(
-    `线上环境无法${action}：请在 Vercel 配置 SUPABASE_URL（或 NEXT_PUBLIC_SUPABASE_URL）和 SUPABASE_SERVICE_ROLE_KEY，保存后重新部署。`
+    `线上环境无法${action}：请在 Vercel 配置 SUPABASE_URL（或 NEXT_PUBLIC_SUPABASE_URL）和 SUPABASE_SERVICE_ROLE_KEY（或 SUPABASE_SECRET_KEY），保存后重新部署。`
   );
 }
 
 export function getSupabaseAdmin(): SupabaseClient {
   if (!isSupabaseEnabled()) {
     throw new Error(
-      "Supabase 未配置，请设置 SUPABASE_URL（或 NEXT_PUBLIC_SUPABASE_URL）与 SUPABASE_SERVICE_ROLE_KEY"
+      "Supabase 未配置，请设置 SUPABASE_URL（或 NEXT_PUBLIC_SUPABASE_URL）与 SUPABASE_SERVICE_ROLE_KEY（或 SUPABASE_SECRET_KEY）"
     );
   }
   if (!adminClient) {
