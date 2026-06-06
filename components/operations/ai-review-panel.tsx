@@ -70,6 +70,10 @@ export function AiReviewPanel({
   highlightTicketNo,
   highlightMatchId,
   onNavigateTab,
+  initialTodos,
+  initialMeasures,
+  initialInbounds,
+  onRefreshParent,
 }: {
   embedded?: boolean;
   /** 从单据导入页跳转时定位到该磅单 */
@@ -77,10 +81,18 @@ export function AiReviewPanel({
   highlightMatchId?: string;
   /** 嵌入单据中心时切换到计量单/采购单 Tab */
   onNavigateTab?: (tab: "measure" | "inbound" | "payment", ticketNo?: string) => void;
+  /** 父页面已加载的数据，切换 Tab 时直接展示，避免重复全屏 loading */
+  initialTodos?: AiTodoResult | null;
+  initialMeasures?: MeasureTicket[];
+  initialInbounds?: InboundRecord[];
+  onRefreshParent?: () => void;
 }) {
   const router = useRouter();
-  const [todos, setTodos] = useState<AiTodoResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  const hasInitialCache = Boolean(
+    initialTodos ?? initialMeasures?.length ?? initialInbounds?.length
+  );
+  const [todos, setTodos] = useState<AiTodoResult | null>(initialTodos ?? null);
+  const [loading, setLoading] = useState(!hasInitialCache);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -93,7 +105,10 @@ export function AiReviewPanel({
   const [documentData, setDocumentData] = useState<{
     measures: MeasureTicket[];
     inbounds: InboundRecord[];
-  }>({ measures: [], inbounds: [] });
+  }>({
+    measures: initialMeasures ?? [],
+    inbounds: initialInbounds ?? [],
+  });
   const [imagePreview, setImagePreview] = useState<ImagePreview | null>(null);
   const [archive, setArchive] = useState<ArchiveTarget | null>(null);
   const [archiveForm, setArchiveForm] = useState({
@@ -121,7 +136,13 @@ export function AiReviewPanel({
     [onNavigateTab, router]
   );
 
-  const loadData = useCallback(async () => {
+  const onRefreshParentRef = useRef(onRefreshParent);
+  onRefreshParentRef.current = onRefreshParent;
+
+  const loadData = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
     try {
       const res = await fetch("/api/import");
       const data = await res.json();
@@ -131,6 +152,7 @@ export function AiReviewPanel({
           measures: (data.measureTickets ?? []) as MeasureTicket[],
           inbounds: (data.inboundRecords ?? []) as InboundRecord[],
         });
+        onRefreshParentRef.current?.();
       }
     } catch {
       /* 忽略，由空态展示 */
@@ -140,8 +162,26 @@ export function AiReviewPanel({
   }, []);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    if (initialTodos !== undefined) {
+      setTodos(initialTodos);
+    }
+    if (initialMeasures !== undefined || initialInbounds !== undefined) {
+      setDocumentData({
+        measures: initialMeasures ?? [],
+        inbounds: initialInbounds ?? [],
+      });
+    }
+    if (hasInitialCache) {
+      setLoading(false);
+    }
+  }, [initialTodos, initialMeasures, initialInbounds, hasInitialCache]);
+
+  const initialFetchDoneRef = useRef(false);
+  useEffect(() => {
+    if (initialFetchDoneRef.current) return;
+    initialFetchDoneRef.current = true;
+    void loadData({ silent: hasInitialCache });
+  }, [hasInitialCache, loadData]);
 
   const highlightHandledRef = useRef(false);
 
@@ -360,7 +400,7 @@ export function AiReviewPanel({
     return (
       <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        AI 正在分析单据…
+        加载核对列表…
       </div>
     );
   }

@@ -139,6 +139,10 @@ export function DocumentCenter() {
     }
   }, []);
 
+  const refreshForAiReview = useCallback(() => {
+    void loadData({ silent: true });
+  }, [loadData]);
+
   // 有「识别中」票据时快轮询（1s），否则慢轮询（5s）
   const hasProcessing =
     measures.some((m) => m.ocrStatus === "识别中" || m.ocrStatus === "待识别") ||
@@ -688,6 +692,10 @@ export function DocumentCenter() {
                   embedded
                   highlightTicketNo={highlightTicketNo}
                   highlightMatchId={highlightMatchId}
+                  initialTodos={todos}
+                  initialMeasures={measures}
+                  initialInbounds={inbounds}
+                  onRefreshParent={refreshForAiReview}
                   onNavigateTab={(tab) => setListTab(tab)}
                 />
               </TabsContent>
