@@ -7,7 +7,6 @@ import { parseInboundExcel } from "@/lib/parsers/inbound-excel";
 import { parseInboundImage } from "@/lib/parsers/inbound-vision";
 import { pulseUploadProgress } from "@/lib/import/upload-progress";
 import { runAutoReview } from "@/lib/import/run-auto-review";
-import { scheduleAfterResponse } from "@/lib/import/schedule-after-response";
 import { buildFileUrl } from "@/lib/utils";
 import type { InboundInsertDedupeResult } from "@/lib/import/ticket-uniqueness";
 
@@ -143,5 +142,7 @@ export async function processInboundUploadJob(
 }
 
 export function enqueueInboundUploadJob(job: InboundUploadJob): void {
-  scheduleAfterResponse(() => processInboundUploadJob(job));
+  setImmediate(() => {
+    void processInboundUploadJob(job);
+  });
 }

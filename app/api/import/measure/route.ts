@@ -1,8 +1,6 @@
 import path from "path";
 import { NextResponse } from "next/server";
 
-/** OCR（火山方舟约 20–60s）需在 Vercel 上延长函数超时 */
-export const maxDuration = 60;
 import { saveUploadFile } from "@/lib/db/file-storage";
 import {
   addUpload,

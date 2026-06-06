@@ -27,11 +27,6 @@ import {
   deleteUploadFile,
   normalizeStoragePath,
 } from "@/lib/db/file-storage";
-import {
-  assertRemoteStorageConfigured,
-  isServerlessEnv,
-  isSupabaseEnabled,
-} from "@/lib/db/supabase";
 import type { AdoptableField } from "@/lib/import/ai-suggestions";
 import type {
   DataStore,
@@ -46,11 +41,6 @@ const MEASURE_DIR = path.join(UPLOAD_DIR, "measure");
 const INBOUND_DIR = path.join(UPLOAD_DIR, "inbound");
 
 function ensureLocalDirs() {
-  if (isSupabaseEnabled()) return;
-  if (isServerlessEnv()) {
-    assertRemoteStorageConfigured("读写数据");
-    return;
-  }
   [DATA_DIR, UPLOAD_DIR, MEASURE_DIR, INBOUND_DIR].forEach((dir) => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -121,16 +111,9 @@ export function getUploadFilePath(relativePath: string) {
 }
 
 export async function addUpload(record: UploadedFileRecord) {
-  if (isSupabaseEnabled()) {
-    const uploads = [...(await readSplitStoreKey("uploads"))];
-    uploads.unshift(record);
-    await writeSplitStoreKey("uploads", uploads);
-    return record;
-  }
-
-  const store = await readStore();
-  store.uploads.unshift(record);
-  await writeStore(store);
+  const uploads = [...(await readSplitStoreKey("uploads"))];
+  uploads.unshift(record);
+  await writeSplitStoreKey("uploads", uploads);
   return record;
 }
 
@@ -138,21 +121,12 @@ export async function updateUpload(
   id: string,
   patch: Partial<UploadedFileRecord>
 ) {
-  if (isSupabaseEnabled()) {
-    const uploads = [...(await readSplitStoreKey("uploads"))];
-    const index = uploads.findIndex((item) => item.id === id);
-    if (index === -1) return null;
-    uploads[index] = { ...uploads[index], ...patch };
-    await writeSplitStoreKey("uploads", uploads);
-    return uploads[index];
-  }
-
-  const store = await readStore();
-  const index = store.uploads.findIndex((item) => item.id === id);
+  const uploads = [...(await readSplitStoreKey("uploads"))];
+  const index = uploads.findIndex((item) => item.id === id);
   if (index === -1) return null;
-  store.uploads[index] = { ...store.uploads[index], ...patch };
-  await writeStore(store);
-  return store.uploads[index];
+  uploads[index] = { ...uploads[index], ...patch };
+  await writeSplitStoreKey("uploads", uploads);
+  return uploads[index];
 }
 
 export async function deleteUpload(id: string) {
@@ -206,16 +180,14 @@ export async function clearBusinessData() {
   store.paymentDetails = [];
   await writeStore(store);
 
-  if (!isSupabaseEnabled()) {
-    try {
-      ensureLocalDirs();
-      if (fs.existsSync(UPLOAD_DIR)) {
-        fs.rmSync(UPLOAD_DIR, { recursive: true, force: true });
-      }
-      ensureLocalDirs();
-    } catch {
-      /* ignore */
+  try {
+    ensureLocalDirs();
+    if (fs.existsSync(UPLOAD_DIR)) {
+      fs.rmSync(UPLOAD_DIR, { recursive: true, force: true });
     }
+    ensureLocalDirs();
+  } catch {
+    /* ignore */
   }
 }
 

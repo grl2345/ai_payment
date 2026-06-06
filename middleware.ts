@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { SESSION_COOKIE, verifySessionValue } from '@/lib/auth/session'
 
 const PUBLIC_PATHS = ['/login']
-const PUBLIC_API_PREFIXES = ['/api/auth/login', '/api/health/']
+const PUBLIC_API_PREFIXES = ['/api/auth/login']
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some(

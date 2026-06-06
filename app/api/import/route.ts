@@ -36,9 +36,6 @@ import { syncAllVerifiedPayments } from "@/lib/import/payment-generation";
 import { prepareForAiTodos } from "@/lib/import/prepare-ai-todos";
 import { verifyMeasureTicketOneClick } from "@/lib/import/verify-measure-ticket";
 
-/** pipeline / 核对等聚合操作可能较慢 */
-export const maxDuration = 60;
-
 async function buildAiTodos(_store?: DataStore) {
   await prepareForAiTodos();
   const fresh = await getStore();

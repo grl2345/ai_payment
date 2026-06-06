@@ -47,8 +47,7 @@ export function getMeasureRecognizeDurationLabel(
 ): string {
   const processing =
     options?.processing ??
-    measure.ocrStatus === "识别中" ||
-    measure.ocrStatus === "待识别";
+    (measure.ocrStatus === "识别中" || measure.ocrStatus === "待识别");
 
   if (measure.recognizeDurationMs != null) {
     const label = formatRecognizeDurationMs(measure.recognizeDurationMs);

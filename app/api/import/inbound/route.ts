@@ -1,7 +1,6 @@
 import path from "path";
 import { NextResponse } from "next/server";
 
-export const maxDuration = 60;
 import { saveUploadFile } from "@/lib/db/file-storage";
 import {
   addUpload,

@@ -6,9 +6,7 @@
     "dev": "next dev -p 3600",
     "build": "next build",
     "start": "next start -p 3600",
-    "lint": "eslint .",
-    "setup:supabase": "node scripts/setup-supabase.mjs",
-    "check:supabase": "node scripts/supabase-restore.mjs --check-only"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -39,8 +37,6 @@
     "@radix-ui/react-toggle": "1.1.10",
     "@radix-ui/react-toggle-group": "1.1.11",
     "@radix-ui/react-tooltip": "1.2.8",
-    "@supabase/supabase-js": "^2.107.0",
-    "@vercel/analytics": "1.6.1",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

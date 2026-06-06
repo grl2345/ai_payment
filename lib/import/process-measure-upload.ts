@@ -8,7 +8,6 @@ import {
 import { pulseUploadProgress } from "@/lib/import/upload-progress";
 import { runAutoReview } from "@/lib/import/run-auto-review";
 import { recognizeMeasureImage } from "@/lib/parsers/measure-ocr";
-import { scheduleAfterResponse } from "@/lib/import/schedule-after-response";
 import { buildFileUrl } from "@/lib/utils";
 
 export type MeasureUploadJob = {
@@ -103,7 +102,7 @@ export async function processMeasureUploadJob(job: MeasureUploadJob): Promise<{
 
 export function enqueueMeasureUploadJobs(jobs: MeasureUploadJob[]): void {
   if (jobs.length === 0) return;
-  scheduleAfterResponse(async () => {
+  setImmediate(async () => {
     for (const job of jobs) {
       await processMeasureUploadJob(job);
     }

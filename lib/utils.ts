@@ -30,12 +30,10 @@ export async function parseFetchJsonResponse<T = Record<string, unknown>>(
     return JSON.parse(text) as T;
   } catch {
     if (/request exceeded|timeout|timed out/i.test(text)) {
-      throw new Error(
-        "服务器处理超时，请稍后刷新重试（若频繁出现需升级 Vercel Pro 以支持更长执行时间）"
-      );
+      throw new Error("服务器处理超时，请稍后刷新重试");
     }
     if (/request entity too large|payload too large|413/i.test(text)) {
-      throw new Error("上传文件过大，请压缩图片后重试");
+      throw new Error("上传文件过大，请压缩图片或调大 Nginx client_max_body_size");
     }
     const snippet = text.trim().slice(0, 60);
     throw new Error(
