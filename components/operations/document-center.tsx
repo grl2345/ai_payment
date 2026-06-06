@@ -39,8 +39,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { normalizeFileUrl } from "@/lib/utils";
+import { cn, normalizeFileUrl, parseFetchJsonResponse } from "@/lib/utils";
 import {
   collectFilesFromDataTransfer,
   MEASURE_UPLOAD_MAX,
@@ -111,10 +110,17 @@ export function DocumentCenter() {
   const measureInputRef = useRef<HTMLInputElement>(null);
   const inboundInputRef = useRef<HTMLInputElement>(null);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options?: { silent?: boolean }) => {
     try {
       const res = await fetch("/api/import");
-      const data = await res.json();
+      const data = await parseFetchJsonResponse<{
+        aiTodos?: AiTodoResult | null;
+        dashboardStats?: DashboardStats | null;
+        measureTickets?: MeasureTicket[];
+        inboundRecords?: InboundRecord[];
+        ticketMatches?: TicketMatch[];
+        uploads?: UploadedFileRecord[];
+      }>(res);
       if (!res.ok) return;
       setTodos(data.aiTodos ?? null);
       setStats(data.dashboardStats ?? null);
@@ -122,6 +128,10 @@ export function DocumentCenter() {
       setInbounds(data.inboundRecords ?? []);
       setMatches(data.ticketMatches ?? []);
       setUploads(data.uploads ?? []);
+    } catch (error) {
+      if (!options?.silent) {
+        toast.error(error instanceof Error ? error.message : "加载数据失败");
+      }
     } finally {
       setLoading(false);
     }
@@ -143,7 +153,7 @@ export function DocumentCenter() {
 
   useEffect(() => {
     const interval = hasProcessing ? 1000 : 5000;
-    const t = window.setInterval(() => void loadData(), interval);
+    const t = window.setInterval(() => void loadData({ silent: true }), interval);
     return () => window.clearInterval(t);
   }, [loadData, hasProcessing]);
 
@@ -195,7 +205,7 @@ export function DocumentCenter() {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
+      const data = await parseFetchJsonResponse<{ error?: string; uploadIds?: string[] }>(res);
       if (!res.ok) throw new Error(data.error || "上传失败");
       // 记录本次批次信息，用于进度条显示
       const ids: string[] = data.uploadIds ?? [];
@@ -228,9 +238,9 @@ export function DocumentCenter() {
       setUploading(true);
       try {
         const res = await fetch("/api/import/inbound?async=true", { method: "POST", body: formData });
-        const data = await res.json();
+        const data = await parseFetchJsonResponse<{ error?: string; uploadId?: string }>(res);
         if (!res.ok) throw new Error(data.error || "上传失败");
-        setInboundPendingUpload({ uploadId: data.uploadId, fileName: file.name });
+        setInboundPendingUpload({ uploadId: data.uploadId!, fileName: file.name });
         toast.success("采购单截图已上传，AI 识别中…");
         setListTab("inbound");
         await loadData();
@@ -244,7 +254,11 @@ export function DocumentCenter() {
       setUploading(true);
       try {
         const res = await fetch("/api/import/inbound", { method: "POST", body: formData });
-        const data = await res.json();
+        const data = await parseFetchJsonResponse<{
+          error?: string;
+          count?: number;
+          records?: unknown[];
+        }>(res);
         if (!res.ok) throw new Error(data.error || "上传失败");
         const count: number = data.count ?? data.records?.length ?? 0;
         setInboundResult({ count, fileName: file.name });
