@@ -56,7 +56,8 @@ export async function GET() {
       availableBuckets: (buckets ?? []).map((b) => b.name),
     },
     hint:
-      bucketError?.includes("fetch failed") || dbError?.message?.includes("fetch failed")
+      bucketError?.message?.includes("fetch failed") ||
+      dbError?.message?.includes("fetch failed")
         ? "无法连接 Supabase：请打开 Supabase 控制台，若项目显示 Paused 请点击 Restore project 恢复"
         : !bucketExists
           ? `请在 Supabase → Storage 创建名为「${SUPABASE_UPLOAD_BUCKET}」的 Private bucket（与 API URL 同一项目）`
