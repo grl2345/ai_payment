@@ -30,7 +30,7 @@ export async function saveUploadFile(
       const msg = error.message;
       if (msg.includes("fetch failed")) {
         throw new Error(
-          "文件上传失败：无法连接 Supabase，请打开 Supabase 控制台确认项目未暂停（Paused），点击 Restore project 后重试"
+          "文件上传失败：无法连接 Supabase，请打开 Supabase 控制台确认项目未暂停（Paused）或未被删除，恢复/重建后更新 Vercel 环境变量并重新部署"
         );
       }
       if (msg === "Not Found" || msg.includes("Bucket not found")) {

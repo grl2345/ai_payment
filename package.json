@@ -6,7 +6,9 @@
     "dev": "next dev -p 3600",
     "build": "next build",
     "start": "next start -p 3600",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "setup:supabase": "node scripts/setup-supabase.mjs",
+    "check:supabase": "node scripts/supabase-restore.mjs --check-only"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

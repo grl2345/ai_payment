@@ -4,14 +4,15 @@ __v0_devtools.tsx
 __v0_jsx-dev-runtime.ts
 .snowflake/
 .v0-trash/
-.vercel/
 
 # Environment variables
 .env*.local
 .env
+.env.vercel
 
 # Common ignores
 node_modules
 .next/
 .DS_Store
+.vercel
 data/

@@ -1,3 +1,4 @@
+import dns from "node:dns/promises";
 import { NextResponse } from "next/server";
 import {
   getSupabaseAdmin,
@@ -30,7 +31,26 @@ export async function GET() {
   if (!isSupabaseEnabled()) {
     return NextResponse.json({
       ...base,
-      hint: "请在 Vercel 配置 SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY，勾选 Production 后 Redeploy",
+      hint: "请在 Vercel 配置 SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY，勾选 Preview / Production 后 Redeploy",
+    });
+  }
+
+  let dnsOk = false;
+  if (url) {
+    try {
+      await dns.lookup(new URL(url).host);
+      dnsOk = true;
+    } catch {
+      dnsOk = false;
+    }
+  }
+
+  if (!dnsOk) {
+    return NextResponse.json({
+      ...base,
+      checks: { ...base.checks, dnsOk: false },
+      hint:
+        "Supabase 项目域名无法解析，项目可能已暂停或已删除。请打开 https://supabase.com/dashboard 恢复（Restore project）或新建项目并更新 Vercel 环境变量后重新部署",
     });
   }
 
@@ -58,7 +78,7 @@ export async function GET() {
     hint:
       bucketError?.message?.includes("fetch failed") ||
       dbError?.message?.includes("fetch failed")
-        ? "无法连接 Supabase：请打开 Supabase 控制台，若项目显示 Paused 请点击 Restore project 恢复"
+        ? "无法连接 Supabase：请打开 Supabase 控制台，若项目显示 Paused 请点击 Restore project；若项目已删除需新建并更新 Vercel 环境变量"
         : !bucketExists
           ? `请在 Supabase → Storage 创建名为「${SUPABASE_UPLOAD_BUCKET}」的 Private bucket（与 API URL 同一项目）`
           : dbError
