@@ -26,7 +26,11 @@ import {
   deleteUploadFile,
   normalizeStoragePath,
 } from "@/lib/db/file-storage";
-import { isSupabaseEnabled } from "@/lib/db/supabase";
+import {
+  assertRemoteStorageConfigured,
+  isServerlessEnv,
+  isSupabaseEnabled,
+} from "@/lib/db/supabase";
 import type { AdoptableField } from "@/lib/import/ai-suggestions";
 import type {
   DataStore,
@@ -42,6 +46,10 @@ const INBOUND_DIR = path.join(UPLOAD_DIR, "inbound");
 
 function ensureLocalDirs() {
   if (isSupabaseEnabled()) return;
+  if (isServerlessEnv()) {
+    assertRemoteStorageConfigured("读写数据");
+    return;
+  }
   [DATA_DIR, UPLOAD_DIR, MEASURE_DIR, INBOUND_DIR].forEach((dir) => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });

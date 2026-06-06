@@ -1,6 +1,10 @@
 import fs from "fs";
 import path from "path";
-import { getSupabaseAdmin, isSupabaseEnabled } from "@/lib/db/supabase";
+import {
+  assertRemoteStorageConfigured,
+  getSupabaseAdmin,
+  isSupabaseEnabled,
+} from "@/lib/db/supabase";
 import type { DataStore } from "@/lib/types";
 
 export const DATA_DIR = path.join(process.cwd(), "data");
@@ -53,6 +57,7 @@ function readJsonArray<T>(filePath: string): T[] {
 }
 
 function writeJsonArray<T>(filePath: string, data: T[]) {
+  assertRemoteStorageConfigured("写入业务数据");
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf-8");
 }

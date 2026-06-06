@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { DATA_DIR } from "@/lib/db/data-files";
 import {
+  assertRemoteStorageConfigured,
   getSupabaseAdmin,
   isSupabaseEnabled,
   SUPABASE_UPLOAD_BUCKET,
@@ -28,6 +29,7 @@ export async function saveUploadFile(
     if (error) throw new Error(`文件上传失败: ${error.message}`);
     return;
   }
+  assertRemoteStorageConfigured("保存上传文件");
   const absolute = localAbsolutePath(normalized);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
   fs.writeFileSync(absolute, buffer);
