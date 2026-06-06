@@ -935,8 +935,8 @@ function MeasureOcrTable({
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => setSelected(new Set())}>取消选择</Button>
         </div>
       )}
-      <div className="overflow-hidden rounded-lg border border-border shadow-sm">
-        <Table>
+      <div className="overflow-x-auto rounded-lg border border-border shadow-sm">
+        <Table className="min-w-[980px]">
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50 h-9 border-b">
               <TableHead className="h-9 w-9 pl-3">
@@ -946,10 +946,10 @@ function MeasureOcrTable({
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[96px]">车牌</TableHead>
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[72px]">司机</TableHead>
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[140px]">供应商</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[108px]">识别状态</TableHead>
+              <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[120px]">识别状态</TableHead>
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[130px] text-right pr-4">置信度</TableHead>
-              <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[110px]">上传时间</TableHead>
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[88px]">识别耗时</TableHead>
+              <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[110px]">上传时间</TableHead>
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[160px] text-right pr-4">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -1034,11 +1034,11 @@ function MeasureOcrTable({
                       : m.confidence ? <ConfidenceBar value={m.confidence} /> : <span className="text-xs text-muted-foreground text-right block pr-1">-</span>
                     }
                   </TableCell>
+                  <TableCell className="py-2">
+                    <RecognizeDurationCell measure={m} upload={upload} processing={processing} />
+                  </TableCell>
                   <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">
                     {formatDateTime(m.createdAt) || "-"}
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <RecognizeDurationCell upload={upload} processing={processing} />
                   </TableCell>
                   <TableCell className="py-2 pr-4">
                     <div className="flex items-center justify-end gap-1">
@@ -1253,8 +1253,8 @@ function InboundOcrTable({
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={() => setSelected(new Set())}>取消选择</Button>
         </div>
       )}
-      <div className="overflow-hidden rounded-lg border border-border shadow-sm">
-      <Table>
+      <div className="overflow-x-auto rounded-lg border border-border shadow-sm">
+      <Table className="min-w-[900px]">
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50 h-9 border-b">
             <TableHead className="h-9 w-9 pl-3">
@@ -1265,8 +1265,8 @@ function InboundOcrTable({
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[72px]">司机</TableHead>
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[140px]">供应商</TableHead>
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[108px]">识别状态</TableHead>
-            <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[110px]">上传时间</TableHead>
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[88px]">识别耗时</TableHead>
+            <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[110px]">上传时间</TableHead>
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[160px] text-right pr-4">操作</TableHead>
           </TableRow>
         </TableHeader>

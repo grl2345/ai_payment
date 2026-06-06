@@ -1398,6 +1398,7 @@ export function ImportPanel({
                               </TableCell>
                               <TableCell>
                                 <RecognizeDurationCell
+                                  measure={ticket}
                                   upload={uploadById.get(ticket.uploadId)}
                                   processing={
                                     ticket.ocrStatus === "识别中" ||

@@ -65,6 +65,8 @@ export interface MeasureTicket {
   imagePath: string;
   ocrStatus: OcrStatus;
   confidence: number;
+  /** 本张图片 OCR 耗时（毫秒），写入计量单便于列表直接展示 */
+  recognizeDurationMs?: number;
   rawOcrText?: string;
   reviewSource?: ReviewSource;
   reviewHint?: string;

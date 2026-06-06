@@ -74,13 +74,18 @@ export async function processMeasureUploadJob(job: MeasureUploadJob): Promise<{
     }
     await updateUpload(uploadId, { progress: 90 });
 
-    await updateMeasureTicket(placeholderId, { ...ticket, id: placeholderId });
+    const recognizeDurationMs = Date.now() - recognizeStartedAt;
+    await updateMeasureTicket(placeholderId, {
+      ...ticket,
+      id: placeholderId,
+      recognizeDurationMs,
+    });
 
     await updateUpload(uploadId, {
       status: "已完成",
       progress: 100,
       resultCount: 1,
-      recognizeDurationMs: Date.now() - recognizeStartedAt,
+      recognizeDurationMs,
     });
     return { success: true };
   } catch (error) {

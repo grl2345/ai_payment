@@ -1,4 +1,4 @@
-import type { UploadedFileRecord } from "@/lib/types";
+import type { MeasureTicket, UploadedFileRecord } from "@/lib/types";
 
 export function formatRecognizeDurationMs(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "-";
@@ -38,4 +38,22 @@ export function getUploadRecognizeDurationLabel(
     options?.processing ??
     (upload?.status === "处理中" && upload.recognizeDurationMs == null);
   return processing ? `${label}…` : label;
+}
+
+export function getMeasureRecognizeDurationLabel(
+  measure: Pick<MeasureTicket, "recognizeDurationMs" | "ocrStatus" | "uploadId">,
+  upload?: UploadedFileRecord | null,
+  options?: { processing?: boolean; now?: number }
+): string {
+  const processing =
+    options?.processing ??
+    measure.ocrStatus === "识别中" ||
+    measure.ocrStatus === "待识别";
+
+  if (measure.recognizeDurationMs != null) {
+    const label = formatRecognizeDurationMs(measure.recognizeDurationMs);
+    return processing ? `${label}…` : label;
+  }
+
+  return getUploadRecognizeDurationLabel(upload, { ...options, processing });
 }
