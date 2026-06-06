@@ -1,6 +1,6 @@
-import fs from "fs";
 import { NextResponse } from "next/server";
-import { getStore, getUploadFilePath } from "@/lib/db/store";
+import { getStore } from "@/lib/db/store";
+import { readUploadFile } from "@/lib/db/file-storage";
 import { parseInboundExcelSheetPreview } from "@/lib/parsers/inbound-excel";
 
 export async function GET(request: Request) {
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "缺少 uploadId" }, { status: 400 });
     }
 
-    const upload = getStore().uploads.find((item) => item.id === uploadId);
+    const upload = (await getStore()).uploads.find((item) => item.id === uploadId);
     if (!upload?.storedPath) {
       return NextResponse.json({ error: "上传记录不存在" }, { status: 404 });
     }
@@ -22,12 +22,11 @@ export async function GET(request: Request) {
       );
     }
 
-    const absolutePath = getUploadFilePath(upload.storedPath);
-    if (!fs.existsSync(absolutePath)) {
+    const buffer = await readUploadFile(upload.storedPath);
+    if (!buffer) {
       return NextResponse.json({ error: "源文件不存在" }, { status: 404 });
     }
 
-    const buffer = fs.readFileSync(absolutePath);
     const preview = parseInboundExcelSheetPreview(buffer);
 
     return NextResponse.json({

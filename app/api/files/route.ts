@@ -1,7 +1,6 @@
-import fs from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
-import { getUploadFilePath } from "@/lib/db/store";
+import { readUploadFile } from "@/lib/db/file-storage";
 
 const contentTypeMap: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -26,16 +25,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "非法文件路径" }, { status: 400 });
   }
 
-  const absolutePath = getUploadFilePath(relativePath);
-  if (!fs.existsSync(absolutePath)) {
+  const buffer = await readUploadFile(relativePath);
+  if (!buffer) {
     return NextResponse.json({ error: "文件不存在" }, { status: 404 });
   }
 
-  const ext = path.extname(absolutePath).toLowerCase();
+  const ext = path.extname(relativePath).toLowerCase();
   const contentType = contentTypeMap[ext] ?? "application/octet-stream";
-  const buffer = fs.readFileSync(absolutePath);
 
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": contentType,
       "Cache-Control": "private, max-age=3600",

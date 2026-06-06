@@ -6,7 +6,7 @@ import {
   type PaymentSyncResult,
 } from "@/lib/import/payment-generation";
 import { findVehicleSettlementRule } from "@/lib/import/vehicle-settlement";
-import type { DataStore, TicketMatch } from "@/lib/types";
+import type { DataStore, TicketMatch, VehicleSettlementRule } from "@/lib/types";
 
 export function isAutoConfirmEnabled() {
   const flag = process.env.AUTO_CONFIRM_ENABLED?.trim().toLowerCase();
@@ -24,7 +24,7 @@ export type AutoConfirmResult = {
 function canAutoConfirmMatch(
   match: TicketMatch,
   store: DataStore,
-  rules: ReturnType<typeof listVehicleSettlementRules>
+  rules: VehicleSettlementRule[]
 ): { ok: true } | { ok: false; reason: string } {
   if (match.matchStatus === "已确认" || match.matchStatus === "已作废") {
     return { ok: false, reason: "已处理" };
@@ -67,19 +67,19 @@ function canAutoConfirmMatch(
 }
 
 /** 对「匹配成功 + 已审核 + 校验通过 + 有结算档案」的记录自动确认并生成付款明细 */
-export function autoConfirmEligibleMatches(
+export async function autoConfirmEligibleMatches(
   store?: DataStore,
   confirmedBy = "AI"
-): AutoConfirmResult {
+): Promise<AutoConfirmResult> {
   if (!isAutoConfirmEnabled()) {
     return { confirmed: 0, paymentsCreated: 0, skipped: 0, errors: ["自动确认已关闭"] };
   }
 
-  const s = store ?? getStore();
+  const s = store ?? (await getStore());
   const rules =
     s.vehicleSettlementRules?.length > 0
       ? s.vehicleSettlementRules
-      : listVehicleSettlementRules();
+      : await listVehicleSettlementRules();
 
   const result: AutoConfirmResult = {
     confirmed: 0,
@@ -97,7 +97,7 @@ export function autoConfirmEligibleMatches(
       continue;
     }
 
-    const updated = confirmTicketMatch(match.id, confirmedBy);
+    const updated = await confirmTicketMatch(match.id, confirmedBy);
     if (!updated) {
       result.errors.push(`${match.ticketNo}：确认失败`);
       continue;
@@ -111,11 +111,11 @@ export function autoConfirmEligibleMatches(
 }
 
 /** AI 流水线收尾：自动确认 + 付款明细对齐 */
-export function runAiPipelineTail(): {
+export async function runAiPipelineTail(): Promise<{
   autoConfirm: AutoConfirmResult;
   paymentSync: PaymentSyncResult;
-} {
-  const autoConfirm = autoConfirmEligibleMatches(undefined, "AI");
-  const paymentSync = syncAllVerifiedPayments();
+}> {
+  const autoConfirm = await autoConfirmEligibleMatches(undefined, "AI");
+  const paymentSync = await syncAllVerifiedPayments();
   return { autoConfirm, paymentSync };
 }

@@ -19,11 +19,11 @@ export type VerifyMeasureTicketResult = {
 };
 
 /** 单条计量单：重建匹配 → 审核/自动确认 → 付款对齐 */
-export function verifyMeasureTicketOneClick(
+export async function verifyMeasureTicketOneClick(
   measureId: string
-): VerifyMeasureTicketResult {
-  rebuildMatches();
-  const store = getStore();
+): Promise<VerifyMeasureTicketResult> {
+  await rebuildMatches();
+  const store = await getStore();
   const measure = store.measureTickets.find((t) => t.id === measureId);
   if (!measure) {
     return { ok: false, error: "计量单不存在" };
@@ -45,7 +45,7 @@ export function verifyMeasureTicketOneClick(
   }
 
   if (isAutoReviewEnabled()) {
-    runAutoReviewOnStore(getStore());
+    await runAutoReviewOnStore(await getStore());
   } else {
     if (measure.ocrStatus !== "已审核" || inbound.reviewStatus !== "已审核") {
       return {
@@ -55,9 +55,9 @@ export function verifyMeasureTicketOneClick(
     }
   }
 
-  prepareForAiTodos();
+  await prepareForAiTodos();
 
-  const after = getStore();
+  const after = await getStore();
   match = after.ticketMatches.find(
     (m) => m.measureTicketId === measureId && m.matchStatus !== "已作废"
   );
@@ -83,7 +83,7 @@ export function verifyMeasureTicketOneClick(
   const rules =
     after.vehicleSettlementRules?.length > 0
       ? after.vehicleSettlementRules
-      : listVehicleSettlementRules();
+      : await listVehicleSettlementRules();
   const rule = findVehicleSettlementRule(
     rules,
     measureFresh.plateNo || inboundFresh.plateNo,
@@ -96,12 +96,12 @@ export function verifyMeasureTicketOneClick(
     };
   }
 
-  const confirmed = confirmTicketMatch(match.id, "AI");
+  const confirmed = await confirmTicketMatch(match.id, "AI");
   if (!confirmed) {
     return { ok: false, error: "确认失败" };
   }
-  syncAllVerifiedPayments();
-  const paymentCreated = (getStore().paymentDetails ?? []).some(
+  await syncAllVerifiedPayments();
+  const paymentCreated = (await getStore()).paymentDetails?.some(
     (p) => p.matchId === match!.id
   );
   return { ok: true, match: confirmed, paymentCreated };

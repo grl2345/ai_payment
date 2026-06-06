@@ -10,8 +10,10 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { AiTodoSummary } from "@/lib/import/ai-suggestions";
 
@@ -80,8 +82,22 @@ function useAiBadges() {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const summary = useAiBadges();
+
+  const handleLogout = useCallback(async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  }, [loggingOut, router]);
 
   const renderNav = (items: NavItem[]) =>
     items.map((item) => {
@@ -173,11 +189,21 @@ export function Sidebar() {
             <span className="text-xs font-medium text-primary-foreground">管</span>
           </div>
           {!collapsed && (
-            <div className="flex flex-col">
+            <div className="flex min-w-0 flex-1 flex-col">
               <span className="text-sm font-medium">管理员</span>
               <span className="text-xs text-sidebar-foreground/60">财务部</span>
             </div>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-sidebar-foreground hover:bg-sidebar-accent"
+            onClick={() => void handleLogout()}
+            disabled={loggingOut}
+            title="退出登录"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </div>

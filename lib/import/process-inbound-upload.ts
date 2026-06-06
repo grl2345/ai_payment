@@ -18,18 +18,18 @@ function formatSkippedTickets(
   return labels.length > 5 ? `${shown} 等` : shown;
 }
 
-function finalizeInboundUpload(
+async function finalizeInboundUpload(
   uploadId: string,
   insertedCount: number,
   skipped: InboundInsertDedupeResult["skipped"],
   parsedCount: number
-): { success: boolean; error?: string } {
+): Promise<{ success: boolean; error?: string }> {
   if (insertedCount === 0 && parsedCount > 0) {
     const detail = formatSkippedTickets(skipped);
     const message = detail
       ? `解析到 ${parsedCount} 条，均因磅单编号重复未导入：${detail}`
       : `解析到 ${parsedCount} 条，均因磅单编号重复未导入`;
-    updateUpload(uploadId, {
+    await updateUpload(uploadId, {
       status: "失败",
       progress: 100,
       resultCount: 0,
@@ -44,7 +44,7 @@ function finalizeInboundUpload(
     warning = `已导入 ${insertedCount} 条，跳过重复 ${skipped.length} 条${detail ? `（${detail}）` : ""}`;
   }
 
-  updateUpload(uploadId, {
+  await updateUpload(uploadId, {
     status: "已完成",
     progress: 100,
     resultCount: insertedCount,
@@ -67,11 +67,11 @@ export async function processInboundUploadJob(
   const { uploadId, kind, buffer, mimeType, relativePath } = job;
   const sourceFile = buildFileUrl(relativePath);
   try {
-    updateUpload(uploadId, { progress: 25, status: "处理中" });
+    await updateUpload(uploadId, { progress: 25, status: "处理中" });
 
     if (kind === "excel") {
       const rawRecords = parseInboundExcel(buffer, uploadId, sourceFile);
-      updateUpload(uploadId, { progress: 85 });
+      await updateUpload(uploadId, { progress: 85 });
       const reviewCtx = rawRecords.map((row) => ({
         id: row.id,
         ticketNo: row.ticketNo,
@@ -82,8 +82,8 @@ export async function processInboundUploadJob(
           recordId: row.id,
         })
       );
-      const { inserted, skipped } = addInboundRecords(records);
-      runAutoReview();
+      const { inserted, skipped } = await addInboundRecords(records);
+      await runAutoReview();
       return finalizeInboundUpload(uploadId, inserted.length, skipped, rawRecords.length);
     }
 
@@ -94,7 +94,7 @@ export async function processInboundUploadJob(
     } finally {
       stopPulse();
     }
-    updateUpload(uploadId, { progress: 88 });
+    await updateUpload(uploadId, { progress: 88 });
     const reviewCtx = rawRecords!.map((row) => ({
       id: row.id,
       ticketNo: row.ticketNo,
@@ -105,8 +105,8 @@ export async function processInboundUploadJob(
         recordId: row.id,
       })
     );
-    const { inserted, skipped } = addInboundRecords(records);
-    runAutoReview();
+    const { inserted, skipped } = await addInboundRecords(records);
+    await runAutoReview();
     return finalizeInboundUpload(
       uploadId,
       inserted.length,
@@ -116,7 +116,7 @@ export async function processInboundUploadJob(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "入库单解析失败";
-    updateUpload(uploadId, {
+    await updateUpload(uploadId, {
       status: "失败",
       progress: 100,
       errorMessage: message,

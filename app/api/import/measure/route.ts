@@ -1,14 +1,15 @@
-import fs from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
+import { saveUploadFile } from "@/lib/db/file-storage";
 import {
   addUpload,
+  buildMeasureStoragePath,
   deleteMeasureTicket,
   generateId,
-  getMeasureDir,
-  nowString,
   getStore,
+  nowString,
 } from "@/lib/db/store";
+import type { MeasureTicket, UploadedFileRecord } from "@/lib/types";
 import {
   enqueueMeasureUploadJobs,
   processMeasureUploadJob,
@@ -58,8 +59,8 @@ export async function POST(request: Request) {
       fileName: string;
       success: boolean;
       error?: string;
-      upload?: ReturnType<typeof getStore>["uploads"][number];
-      ticket?: ReturnType<typeof getStore>["measureTickets"][number];
+      upload?: UploadedFileRecord;
+      ticket?: MeasureTicket;
     }[] = [];
 
     for (const file of files) {
@@ -79,13 +80,12 @@ export async function POST(request: Request) {
       const uploadId = generateId("UP");
       const ext = path.extname(file.name) || ".jpg";
       const storedName = `${uploadId}${ext}`;
-      const relativePath = path.join("uploads", "measure", storedName);
-      const absolutePath = path.join(getMeasureDir(), storedName);
+      const relativePath = buildMeasureStoragePath(storedName);
       const buffer = Buffer.from(await file.arrayBuffer());
 
-      fs.writeFileSync(absolutePath, buffer);
+      await saveUploadFile(relativePath, buffer);
 
-      const uploadRecord = addUpload({
+      const uploadRecord = await addUpload({
         id: uploadId,
         name: file.name,
         type: "image",
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
         queued.push({ uploadId, fileName: file.name });
       } else {
         const outcome = await processMeasureUploadJob(job);
-        const store = getStore();
+        const store = await getStore();
         const upload = store.uploads.find((u) => u.id === uploadId) ?? uploadRecord;
         const ticket = store.measureTickets.find((t) => t.uploadId === uploadId);
         results.push({
@@ -153,7 +153,7 @@ export async function GET(request: Request) {
   if (!id) {
     return NextResponse.json({ error: "缺少计量单 ID" }, { status: 400 });
   }
-  const ticket = getMeasureTicketById(id);
+  const ticket = await getMeasureTicketById(id);
   if (!ticket) {
     return NextResponse.json({ error: "计量单不存在" }, { status: 404 });
   }
@@ -167,7 +167,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "缺少计量单 ID" }, { status: 400 });
     }
     const body = await request.json();
-    const result = patchMeasureTicket(id, body);
+    const result = await patchMeasureTicket(id, body);
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
@@ -183,7 +183,7 @@ export async function DELETE(request: Request) {
   if (!id) {
     return NextResponse.json({ error: "缺少计量单 ID" }, { status: 400 });
   }
-  const success = deleteMeasureTicket(id);
+  const success = await deleteMeasureTicket(id);
   if (!success) {
     return NextResponse.json({ error: "计量单不存在" }, { status: 404 });
   }

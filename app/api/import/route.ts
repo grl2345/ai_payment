@@ -9,6 +9,7 @@ import {
   rebuildMatches,
   voidTicketMatch,
 } from "@/lib/db/store";
+import type { DataStore } from "@/lib/types";
 import { computeAiTodos } from "@/lib/import/ai-suggestions";
 import {
   deleteVehicleSettlementRule,
@@ -35,16 +36,16 @@ import { syncAllVerifiedPayments } from "@/lib/import/payment-generation";
 import { prepareForAiTodos } from "@/lib/import/prepare-ai-todos";
 import { verifyMeasureTicketOneClick } from "@/lib/import/verify-measure-ticket";
 
-function buildAiTodos(_store?: ReturnType<typeof getStore>) {
-  prepareForAiTodos();
-  const fresh = getStore();
+async function buildAiTodos(_store?: DataStore) {
+  await prepareForAiTodos();
+  const fresh = await getStore();
   return computeAiTodos({
     measureTickets: fresh.measureTickets,
     inboundRecords: fresh.inboundRecords,
     ticketMatches: fresh.ticketMatches,
     paymentDetails: fresh.paymentDetails ?? [],
     uploads: fresh.uploads,
-    rules: listVehicleSettlementRules(),
+    rules: await listVehicleSettlementRules(),
   });
 }
 
@@ -54,12 +55,12 @@ export async function GET(request: Request) {
   const aiSnapshot = searchParams.get("aiSnapshot") === "true";
 
   if (syncMatches) {
-    rebuildMatches();
+    await rebuildMatches();
   }
 
   if (aiSnapshot) {
-    const batch = buildAiBatchVerifySnapshot();
-    const store = getStore();
+    const batch = await buildAiBatchVerifySnapshot();
+    const store = await getStore();
     return NextResponse.json({
       batch,
       measureTickets: store.measureTickets,
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const store = getStore();
+  const store = await getStore();
   const reviewStats = countNeedsReview(
     store.measureTickets,
     store.inboundRecords
@@ -79,10 +80,10 @@ export async function GET(request: Request) {
     measureTickets: store.measureTickets,
     inboundRecords: store.inboundRecords,
     ticketMatches: store.ticketMatches,
-    vehicleSettlementRules: listVehicleSettlementRules(),
+    vehicleSettlementRules: await listVehicleSettlementRules(),
     paymentDetails: store.paymentDetails ?? [],
     dashboardStats: computeDashboardStats(store),
-    aiTodos: buildAiTodos(store),
+    aiTodos: await buildAiTodos(store),
     ocrProvider: isVolcengineOcrEnabled() ? "volcengine" : "tesseract",
     autoReview: {
       enabled: isAutoReviewEnabled(),
@@ -113,8 +114,8 @@ export async function POST(request: Request) {
     if (!measureId) {
       return NextResponse.json({ error: "缺少计量单 ID" }, { status: 400 });
     }
-    const result = verifyMeasureTicketOneClick(measureId);
-    const store = getStore();
+    const result = await verifyMeasureTicketOneClick(measureId);
+    const store = await getStore();
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
@@ -126,32 +127,32 @@ export async function POST(request: Request) {
       inboundRecords: store.inboundRecords,
       ticketMatches: store.ticketMatches,
       paymentDetails: store.paymentDetails,
-      aiTodos: buildAiTodos(store),
+      aiTodos: await buildAiTodos(store),
       dashboardStats: computeDashboardStats(store),
     });
   }
 
   if (applySuggestion) {
     const body = await request.json().catch(() => ({}));
-    const result = applyAiSuggestion(body);
+    const result = await applyAiSuggestion(body);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
-    const store = getStore();
+    const store = await getStore();
     return NextResponse.json({
       success: true,
       ticketMatches: store.ticketMatches,
       measureTickets: store.measureTickets,
       inboundRecords: store.inboundRecords,
       paymentDetails: store.paymentDetails,
-      aiTodos: buildAiTodos(store),
+      aiTodos: await buildAiTodos(store),
       dashboardStats: computeDashboardStats(store),
     });
   }
 
   if (aiVerify) {
-    const batch = runAiBatchVerify();
-    const store = getStore();
+    const batch = await runAiBatchVerify();
+    const store = await getStore();
     if (!batch.ok) {
       return NextResponse.json({ error: batch.error }, { status: 400 });
     }
@@ -167,8 +168,8 @@ export async function POST(request: Request) {
   }
 
   if (pipeline) {
-    const result = runAiPipeline();
-    const store = getStore();
+    const result = await runAiPipeline();
+    const store = await getStore();
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
@@ -183,9 +184,9 @@ export async function POST(request: Request) {
   }
 
   if (autoConfirm) {
-    const confirmResult = autoConfirmEligibleMatches(undefined, "AI");
-    const paymentSync = syncAllVerifiedPayments();
-    const store = getStore();
+    const confirmResult = await autoConfirmEligibleMatches(undefined, "AI");
+    const paymentSync = await syncAllVerifiedPayments();
+    const store = await getStore();
     return NextResponse.json({
       success: true,
       autoConfirm: confirmResult,
@@ -196,8 +197,8 @@ export async function POST(request: Request) {
   }
 
   if (generatePayments) {
-    const paymentSync = syncAllVerifiedPayments();
-    const store = getStore();
+    const paymentSync = await syncAllVerifiedPayments();
+    const store = await getStore();
     return NextResponse.json({
       success: true,
       paymentSync,
@@ -206,8 +207,8 @@ export async function POST(request: Request) {
   }
 
   if (rebuildMatchesOnly) {
-    rebuildMatches();
-    const store = getStore();
+    await rebuildMatches();
+    const store = await getStore();
     const ticketMatches = store.ticketMatches;
     return NextResponse.json({
       success: true,
@@ -230,7 +231,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "无效请求" }, { status: 400 });
   }
 
-  const result = runAutoReview();
+  const result = await runAutoReview();
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
@@ -255,7 +256,7 @@ export async function PATCH(request: Request) {
     if (body.resource === "vehicleSettlement") {
       const action = body.action;
       if (action === "upsert") {
-        const rule = upsertVehicleSettlementRule(body.item ?? body);
+        const rule = await upsertVehicleSettlementRule(body.item ?? body);
         return NextResponse.json({ success: true, rule });
       }
       if (action === "delete") {
@@ -263,7 +264,7 @@ export async function PATCH(request: Request) {
         if (!ruleId) {
           return NextResponse.json({ error: "缺少档案 ID" }, { status: 400 });
         }
-        const ok = deleteVehicleSettlementRule(ruleId);
+        const ok = await deleteVehicleSettlementRule(ruleId);
         if (!ok) {
           return NextResponse.json({ error: "记录不存在" }, { status: 404 });
         }
@@ -280,7 +281,7 @@ export async function PATCH(request: Request) {
     }
 
     if (action === "confirm") {
-      const match = confirmTicketMatch(id, body.confirmedBy ?? "用户");
+      const match = await confirmTicketMatch(id, body.confirmedBy ?? "用户");
       if (!match) {
         return NextResponse.json({ error: "记录不存在" }, { status: 404 });
       }
@@ -288,7 +289,7 @@ export async function PATCH(request: Request) {
     }
 
     if (action === "void") {
-      const match = voidTicketMatch(id);
+      const match = await voidTicketMatch(id);
       if (!match) {
         return NextResponse.json({ error: "记录不存在" }, { status: 404 });
       }
@@ -309,8 +310,8 @@ export async function DELETE(request: Request) {
   const reset = searchParams.get("reset") === "true";
 
   if (reset) {
-    clearBusinessData();
-    const store = getStore();
+    await clearBusinessData();
+    const store = await getStore();
     return NextResponse.json({
       success: true,
       uploads: store.uploads,
@@ -319,12 +320,12 @@ export async function DELETE(request: Request) {
       ticketMatches: store.ticketMatches,
       paymentDetails: store.paymentDetails ?? [],
       dashboardStats: computeDashboardStats(store),
-      aiTodos: buildAiTodos(store),
+      aiTodos: await buildAiTodos(store),
     });
   }
 
   if (clearCompleted) {
-    const count = clearCompletedUploads();
+    const count = await clearCompletedUploads();
     return NextResponse.json({ success: true, cleared: count });
   }
 
@@ -332,7 +333,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "缺少上传记录 ID" }, { status: 400 });
   }
 
-  const success = deleteUpload(id);
+  const success = await deleteUpload(id);
   if (!success) {
     return NextResponse.json({ error: "上传记录不存在" }, { status: 404 });
   }

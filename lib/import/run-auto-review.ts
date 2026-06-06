@@ -20,7 +20,7 @@ function resolveInboundSource(
   return "image";
 }
 
-export function runAutoReviewOnStore(store: DataStore) {
+export async function runAutoReviewOnStore(store: DataStore) {
   if (!isAutoReviewEnabled()) {
     return {
       ok: false as const,
@@ -85,12 +85,12 @@ export function runAutoReviewOnStore(store: DataStore) {
     return next;
   });
 
-  saveStore(store);
-  rebuildMatches();
+  await saveStore(store);
+  await rebuildMatches();
 
-  const autoConfirm = autoConfirmEligibleMatches(getStore(), "AI");
+  const autoConfirm = await autoConfirmEligibleMatches(await getStore(), "AI");
 
-  const storeAfter = getStore();
+  const storeAfter = await getStore();
   const stats = countNeedsReview(
     storeAfter.measureTickets,
     storeAfter.inboundRecords
@@ -109,6 +109,6 @@ export function runAutoReviewOnStore(store: DataStore) {
   };
 }
 
-export function runAutoReview() {
-  return runAutoReviewOnStore(getStore());
+export async function runAutoReview() {
+  return runAutoReviewOnStore(await getStore());
 }

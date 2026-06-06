@@ -89,10 +89,8 @@ export function buildPaymentDetail(
   };
 }
 
-function savePayments(payments: PaymentDetail[]) {
-  const store = getStore();
-  store.paymentDetails = payments;
-  writeSplitStoreKey("paymentDetails", payments);
+async function savePayments(payments: PaymentDetail[]) {
+  await writeSplitStoreKey("paymentDetails", payments);
 }
 
 /** 仅「已确认」的核对记录可进入付款明细 */
@@ -100,20 +98,20 @@ export function isMatchConfirmedForPayment(match: TicketMatch): boolean {
   return match.matchStatus === "已确认";
 }
 
-export function removePaymentByMatchId(matchId: string, store?: DataStore): boolean {
-  const s = store ?? getStore();
+export async function removePaymentByMatchId(matchId: string, store?: DataStore): Promise<boolean> {
+  const s = store ?? (await getStore());
   const before = s.paymentDetails.length;
   s.paymentDetails = s.paymentDetails.filter((p) => p.matchId !== matchId);
   if (s.paymentDetails.length === before) return false;
-  savePayments(s.paymentDetails);
+  await savePayments(s.paymentDetails);
   return true;
 }
 
-export function syncPaymentForMatch(
+export async function syncPaymentForMatch(
   matchId: string,
   store?: DataStore
-): PaymentDetail | null | { error: string } {
-  const s = store ?? getStore();
+): Promise<PaymentDetail | null | { error: string }> {
+  const s = store ?? (await getStore());
   const match = s.ticketMatches.find((m) => m.id === matchId);
   if (!match?.inboundRecordId || !match.measureTicketId) {
     return { error: "未关联计量单与入库单" };
@@ -122,7 +120,7 @@ export function syncPaymentForMatch(
   const existing = s.paymentDetails.find((p) => p.matchId === matchId);
 
   if (!isMatchConfirmedForPayment(match)) {
-    if (existing) removePaymentByMatchId(matchId, s);
+    if (existing) await removePaymentByMatchId(matchId, s);
     return { error: "单据核对未确认，不生成付款明细" };
   }
 
@@ -137,14 +135,14 @@ export function syncPaymentForMatch(
   if (!isMatchVerificationSatisfied(match.matchStatus, verification)) {
     if (existing) {
       s.paymentDetails = s.paymentDetails.filter((p) => p.matchId !== matchId);
-      savePayments(s.paymentDetails);
+      await savePayments(s.paymentDetails);
     }
     return { error: "单据校验未通过，请先人工确认或修正数据后再生成付款明细" };
   }
 
   const rules = s.vehicleSettlementRules?.length
     ? s.vehicleSettlementRules
-    : listVehicleSettlementRules();
+    : await listVehicleSettlementRules();
   const vehicleRule = findVehicleSettlementRule(
     rules,
     measure.plateNo || inbound.plateNo,
@@ -171,17 +169,17 @@ export function syncPaymentForMatch(
   } else {
     s.paymentDetails.unshift(payment);
   }
-  savePayments(s.paymentDetails);
+  await savePayments(s.paymentDetails);
   return payment;
 }
 
 /** 为「已确认」且校验通过的匹配记录生成/更新付款明细 */
-export function syncAllVerifiedPayments(store?: DataStore): PaymentSyncResult {
-  const s = store ?? getStore();
+export async function syncAllVerifiedPayments(store?: DataStore): Promise<PaymentSyncResult> {
+  const s = store ?? (await getStore());
   const rules =
     s.vehicleSettlementRules?.length > 0
       ? s.vehicleSettlementRules
-      : listVehicleSettlementRules();
+      : await listVehicleSettlementRules();
 
   const result: PaymentSyncResult = {
     created: 0,
@@ -258,6 +256,6 @@ export function syncAllVerifiedPayments(store?: DataStore): PaymentSyncResult {
   result.removed = before - filtered.length;
 
   s.paymentDetails = filtered;
-  savePayments(filtered);
+  await savePayments(filtered);
   return result;
 }

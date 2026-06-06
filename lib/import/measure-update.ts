@@ -35,18 +35,18 @@ export function pickEditableFields(body: Record<string, unknown>) {
   return patch;
 }
 
-export function getMeasureTicketById(id: string) {
-  return getStore().measureTickets.find((item) => item.id === id) ?? null;
+export async function getMeasureTicketById(id: string) {
+  return (await getStore()).measureTickets.find((item) => item.id === id) ?? null;
 }
 
-export function patchMeasureTicket(
+export async function patchMeasureTicket(
   id: string,
   body: Record<string, unknown>
 ) {
   const patch = pickEditableFields(body);
   const confirm = body.confirm === true;
 
-  const existing = getMeasureTicketById(id);
+  const existing = await getMeasureTicketById(id);
   if (!existing) {
     return { error: "计量单不存在", status: 404 as const };
   }
@@ -54,7 +54,7 @@ export function patchMeasureTicket(
   const nextTicketNo =
     typeof patch.ticketNo === "string" ? patch.ticketNo : existing.ticketNo;
   const duplicateMsg = getMeasureDuplicateMessage(
-    getStore(),
+    await getStore(),
     nextTicketNo,
     id
   );
@@ -63,8 +63,8 @@ export function patchMeasureTicket(
   }
 
   const ticket = confirm
-    ? confirmMeasureTicket(id, patch)
-    : updateMeasureTicket(id, {
+    ? await confirmMeasureTicket(id, patch)
+    : await updateMeasureTicket(id, {
         ...patch,
         ocrStatus:
           existing.ocrStatus === "已审核" ? "已审核" : "待审核",

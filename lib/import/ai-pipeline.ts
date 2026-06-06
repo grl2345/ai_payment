@@ -16,14 +16,14 @@ export type AiPipelineResult = {
 };
 
 /** 上传后一键：AI 审核 → 重建匹配 → 自动确认 → 付款明细 */
-export function runAiPipeline(): AiPipelineResult {
-  const review = runAutoReviewOnStore(getStore());
+export async function runAiPipeline(): Promise<AiPipelineResult> {
+  const review = await runAutoReviewOnStore(await getStore());
   if (!review.ok) {
     return { ok: false, error: review.error };
   }
 
-  const autoConfirm = autoConfirmEligibleMatches(getStore(), "AI");
-  const paymentSync = syncAllVerifiedPayments();
+  const autoConfirm = await autoConfirmEligibleMatches(await getStore(), "AI");
+  const paymentSync = await syncAllVerifiedPayments();
 
   return {
     ok: true,

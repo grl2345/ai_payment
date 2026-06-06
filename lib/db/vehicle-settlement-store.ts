@@ -38,20 +38,20 @@ function buildRule(input: VehicleSettlementInput): VehicleSettlementRule {
   };
 }
 
-export function ensureVehicleSettlementRulesSeeded() {
-  const store = getStore();
+export async function ensureVehicleSettlementRulesSeeded() {
+  const store = await getStore();
   if (store.vehicleSettlementRules?.length) return store.vehicleSettlementRules;
 
   const seeded = DEFAULT_VEHICLE_SETTLEMENT_RULES.map((row) =>
     buildRule({ ...row, enabled: true })
   );
   store.vehicleSettlementRules = seeded;
-  writeSplitStoreKey("vehicleSettlementRules", seeded);
+  await writeSplitStoreKey("vehicleSettlementRules", seeded);
   return seeded;
 }
 
-export function listVehicleSettlementRules(): VehicleSettlementRule[] {
-  const store = getStore();
+export async function listVehicleSettlementRules(): Promise<VehicleSettlementRule[]> {
+  const store = await getStore();
   const rules = store.vehicleSettlementRules ?? [];
   if (rules.length === 0) {
     return ensureVehicleSettlementRulesSeeded();
@@ -59,10 +59,10 @@ export function listVehicleSettlementRules(): VehicleSettlementRule[] {
   return rules;
 }
 
-export function upsertVehicleSettlementRule(
+export async function upsertVehicleSettlementRule(
   input: VehicleSettlementInput
-): VehicleSettlementRule {
-  const store = getStore();
+): Promise<VehicleSettlementRule> {
+  const store = await getStore();
   const rules = store.vehicleSettlementRules ?? [];
   const now = nowString();
   const driver = normPersonName(input.driverName);
@@ -105,7 +105,7 @@ export function upsertVehicleSettlementRule(
       updatedAt: now,
     };
     store.vehicleSettlementRules = rules;
-    writeSplitStoreKey("vehicleSettlementRules", rules);
+    await writeSplitStoreKey("vehicleSettlementRules", rules);
     return rules[index];
   }
 
@@ -113,16 +113,16 @@ export function upsertVehicleSettlementRule(
   created.createdAt = now;
   created.updatedAt = now;
   store.vehicleSettlementRules = [created, ...rules];
-  writeSplitStoreKey("vehicleSettlementRules", store.vehicleSettlementRules);
+  await writeSplitStoreKey("vehicleSettlementRules", store.vehicleSettlementRules);
   return created;
 }
 
-export function deleteVehicleSettlementRule(id: string): boolean {
-  const store = getStore();
+export async function deleteVehicleSettlementRule(id: string): Promise<boolean> {
+  const store = await getStore();
   const rules = store.vehicleSettlementRules ?? [];
   const next = rules.filter((r) => r.id !== id);
   if (next.length === rules.length) return false;
   store.vehicleSettlementRules = next;
-  writeSplitStoreKey("vehicleSettlementRules", next);
+  await writeSplitStoreKey("vehicleSettlementRules", next);
   return true;
 }

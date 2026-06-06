@@ -2,15 +2,15 @@ import { writeSplitStoreKey } from "@/lib/db/data-files";
 import { getStore } from "@/lib/db/store";
 import type { PaymentDetail, PaymentStatus } from "@/lib/types";
 
-export function listPaymentDetails(): PaymentDetail[] {
-  return getStore().paymentDetails ?? [];
+export async function listPaymentDetails(): Promise<PaymentDetail[]> {
+  return (await getStore()).paymentDetails ?? [];
 }
 
-export function updatePaymentStatus(
+export async function updatePaymentStatus(
   id: string,
   patch: Partial<Pick<PaymentDetail, "paymentStatus" | "paidAmount" | "paidDate" | "invoiceStatus" | "invoiceAmount" | "invoiceDate">>
-): PaymentDetail | null {
-  const store = getStore();
+): Promise<PaymentDetail | null> {
+  const store = await getStore();
   const idx = store.paymentDetails.findIndex((p) => p.id === id);
   if (idx === -1) return null;
 
@@ -19,12 +19,12 @@ export function updatePaymentStatus(
     ...patch,
     updatedAt: new Date().toLocaleString("zh-CN", { hour12: false }),
   };
-  writeSplitStoreKey("paymentDetails", store.paymentDetails);
+  await writeSplitStoreKey("paymentDetails", store.paymentDetails);
   return store.paymentDetails[idx];
 }
 
-export function markPaymentPaid(id: string, paidAmount?: number) {
-  const store = getStore();
+export async function markPaymentPaid(id: string, paidAmount?: number) {
+  const store = await getStore();
   const payment = store.paymentDetails.find((p) => p.id === id);
   if (!payment) return null;
   const amount = paidAmount ?? payment.payableAmount;

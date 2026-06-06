@@ -40,15 +40,15 @@ export function pickInboundEditableFields(body: Record<string, unknown>) {
   return normalizeInboundNumericFields(patch);
 }
 
-export function getInboundRecordById(id: string) {
-  return getStore().inboundRecords.find((item) => item.id === id) ?? null;
+export async function getInboundRecordById(id: string) {
+  return (await getStore()).inboundRecords.find((item) => item.id === id) ?? null;
 }
 
-export function patchInboundRecord(id: string, body: Record<string, unknown>) {
+export async function patchInboundRecord(id: string, body: Record<string, unknown>) {
   const patch = pickInboundEditableFields(body);
   const confirm = body.confirm === true;
 
-  const existing = getInboundRecordById(id);
+  const existing = await getInboundRecordById(id);
   if (!existing) {
     return { error: "入库单不存在", status: 404 as const };
   }
@@ -56,7 +56,7 @@ export function patchInboundRecord(id: string, body: Record<string, unknown>) {
   const nextTicketNo =
     typeof patch.ticketNo === "string" ? patch.ticketNo : existing.ticketNo;
   const duplicateMsg = getInboundDuplicateMessage(
-    getStore(),
+    await getStore(),
     nextTicketNo,
     id
   );
@@ -65,8 +65,8 @@ export function patchInboundRecord(id: string, body: Record<string, unknown>) {
   }
 
   const record = confirm
-    ? confirmInboundRecord(id, patch)
-    : updateInboundRecord(id, {
+    ? await confirmInboundRecord(id, patch)
+    : await updateInboundRecord(id, {
         ...patch,
         reviewStatus:
           existing.reviewStatus === "已审核" ? "已审核" : "待审核",

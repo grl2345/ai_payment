@@ -8,10 +8,12 @@ import {
 import { syncAllVerifiedPayments } from "@/lib/import/payment-generation";
 import { findVehicleSettlementRule } from "@/lib/import/vehicle-settlement";
 import type {
+  DataStore,
   InboundRecord,
   MeasureTicket,
   PaymentDetail,
   TicketMatch,
+  VehicleSettlementRule,
 } from "@/lib/types";
 
 export type AiVerifyIssueCategory =
@@ -90,7 +92,7 @@ function skipReasonForMatch(
   match: TicketMatch,
   measure: MeasureTicket,
   inbound: InboundRecord | undefined,
-  rules: ReturnType<typeof listVehicleSettlementRules>
+  rules: VehicleSettlementRule[]
 ): string | null {
   if (match.matchStatus === "已确认" || match.matchStatus === "已作废") {
     return null;
@@ -131,9 +133,7 @@ type BatchCountMeta = {
   inboundPending: number;
 };
 
-function countBatchMetaFromStore(
-  store: ReturnType<typeof getStore>
-): BatchCountMeta {
+function countBatchMetaFromStore(store: DataStore): BatchCountMeta {
   return {
     measureApproved: store.measureTickets.filter(
       (m) => m.ocrStatus === "已审核"
@@ -155,10 +155,10 @@ function countBatchMetaFromStore(
 }
 
 function computeAiBatchFromStore(
-  store: ReturnType<typeof getStore>,
-  meta: BatchCountMeta
+  store: DataStore,
+  meta: BatchCountMeta,
+  rules: VehicleSettlementRule[]
 ): AiBatchVerifyResult {
-  const rules = listVehicleSettlementRules();
 
   const measureById = new Map(store.measureTickets.map((m) => [m.id, m]));
   const inboundById = new Map(store.inboundRecords.map((r) => [r.id, r]));
@@ -333,13 +333,14 @@ function computeAiBatchFromStore(
 }
 
 /** 只读：根据当前库内数据生成 AI 核对明细（不重算匹配、不写盘） */
-export function buildAiBatchVerifySnapshot(): AiBatchVerifyResult {
-  const store = getStore();
-  return computeAiBatchFromStore(store, countBatchMetaFromStore(store));
+export async function buildAiBatchVerifySnapshot(): Promise<AiBatchVerifyResult> {
+  const store = await getStore();
+  const rules = await listVehicleSettlementRules();
+  return computeAiBatchFromStore(store, countBatchMetaFromStore(store), rules);
 }
 
-export function runAiBatchVerify(): AiBatchVerifyResult {
-  const review = runAutoReviewOnStore(getStore());
+export async function runAiBatchVerify(): Promise<AiBatchVerifyResult> {
+  const review = await runAutoReviewOnStore(await getStore());
   if (!review.ok) {
     return {
       ok: false,
@@ -356,15 +357,20 @@ export function runAiBatchVerify(): AiBatchVerifyResult {
     };
   }
 
-  syncAllVerifiedPayments();
-  const store = getStore();
-  return computeAiBatchFromStore(store, {
-    measureApproved: review.measureApproved,
-    inboundApproved: review.inboundApproved,
-    autoConfirmed: review.autoConfirmed,
-    paymentsCreated: review.paymentsFromConfirm,
-    measurePending: review.measurePending,
-    inboundPending: review.inboundPending,
-  });
+  await syncAllVerifiedPayments();
+  const store = await getStore();
+  const rules = await listVehicleSettlementRules();
+  return computeAiBatchFromStore(
+    store,
+    {
+      measureApproved: review.measureApproved,
+      inboundApproved: review.inboundApproved,
+      autoConfirmed: review.autoConfirmed,
+      paymentsCreated: review.paymentsFromConfirm,
+      measurePending: review.measurePending,
+      inboundPending: review.inboundPending,
+    },
+    rules
+  );
 }
 

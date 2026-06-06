@@ -24,12 +24,11 @@ export async function processMeasureUploadJob(job: MeasureUploadJob): Promise<{
 }> {
   const { uploadId, buffer, mimeType, relativePath } = job;
   try {
-    updateUpload(uploadId, { progress: 25, status: "处理中" });
+    await updateUpload(uploadId, { progress: 25, status: "处理中" });
 
-    // 先插入占位 ticket，让前端立即看到「识别中」状态
     const placeholderId = generateId("MT");
     const imageUrl = buildFileUrl(relativePath);
-    addMeasureTicket({
+    await addMeasureTicket({
       id: placeholderId,
       uploadId,
       ticketNo: "",
@@ -67,13 +66,11 @@ export async function processMeasureUploadJob(job: MeasureUploadJob): Promise<{
     } finally {
       stopPulse();
     }
-    updateUpload(uploadId, { progress: 90 });
+    await updateUpload(uploadId, { progress: 90 });
 
-    // 用识别结果替换占位 ticket（保持相同 id 避免重复）
-    updateMeasureTicket(placeholderId, { ...ticket, id: placeholderId });
+    await updateMeasureTicket(placeholderId, { ...ticket, id: placeholderId });
 
-    // 若磅单号重复（另一条真实 ticket 已存在），视为成功更新完毕
-    updateUpload(uploadId, {
+    await updateUpload(uploadId, {
       status: "已完成",
       progress: 100,
       resultCount: 1,
@@ -82,7 +79,7 @@ export async function processMeasureUploadJob(job: MeasureUploadJob): Promise<{
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "计量单识别失败";
-    updateUpload(uploadId, {
+    await updateUpload(uploadId, {
       status: "失败",
       progress: 100,
       errorMessage: message,
@@ -98,7 +95,7 @@ export function enqueueMeasureUploadJobs(jobs: MeasureUploadJob[]): void {
       for (const job of jobs) {
         await processMeasureUploadJob(job);
       }
-      runAutoReview();
+      await runAutoReview();
     })();
   });
 }

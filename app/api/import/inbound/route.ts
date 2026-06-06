@@ -1,13 +1,13 @@
-import fs from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
+import { saveUploadFile } from "@/lib/db/file-storage";
 import {
   addUpload,
+  buildInboundStoragePath,
   deleteInboundRecord,
   generateId,
-  getInboundDir,
-  nowString,
   getStore,
+  nowString,
 } from "@/lib/db/store";
 import {
   enqueueInboundUploadJob,
@@ -54,13 +54,12 @@ export async function POST(request: Request) {
       (kind === "image" ? ".jpg" : ".xlsx");
     const uploadId = generateId("UP");
     const storedName = `${uploadId}${ext}`;
-    const relativePath = path.join("uploads", "inbound", storedName);
-    const absolutePath = path.join(getInboundDir(), storedName);
+    const relativePath = buildInboundStoragePath(storedName);
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    fs.writeFileSync(absolutePath, buffer);
+    await saveUploadFile(relativePath, buffer);
 
-    addUpload({
+    await addUpload({
       id: uploadId,
       name: file.name,
       type: kind === "image" ? "inbound-image" : "excel",
@@ -94,7 +93,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: outcome.error }, { status: 422 });
     }
 
-    const store = getStore();
+    const store = await getStore();
     const records = store.inboundRecords.filter((r) => r.uploadId === uploadId);
     const aiApproved = records.filter((r) => r.reviewSource === "ai").length;
 
@@ -117,7 +116,7 @@ export async function GET(request: Request) {
   if (!id) {
     return NextResponse.json({ error: "缺少入库单 ID" }, { status: 400 });
   }
-  const record = getInboundRecordById(id);
+  const record = await getInboundRecordById(id);
   if (!record) {
     return NextResponse.json({ error: "入库单不存在" }, { status: 404 });
   }
@@ -131,7 +130,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "缺少入库单 ID" }, { status: 400 });
     }
     const body = await request.json();
-    const result = patchInboundRecord(id, body);
+    const result = await patchInboundRecord(id, body);
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
@@ -147,7 +146,7 @@ export async function DELETE(request: Request) {
   if (!id) {
     return NextResponse.json({ error: "缺少入库单 ID" }, { status: 400 });
   }
-  const success = deleteInboundRecord(id);
+  const success = await deleteInboundRecord(id);
   if (!success) {
     return NextResponse.json({ error: "入库单不存在" }, { status: 404 });
   }
