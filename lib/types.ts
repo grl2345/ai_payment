@@ -37,6 +37,10 @@ export interface UploadedFileRecord {
   storedPath: string;
   errorMessage?: string;
   resultCount?: number;
+  /** OCR / 解析开始时间（ISO） */
+  recognizeStartedAt?: string;
+  /** 识别完成耗时（毫秒），含模型推理与写库 */
+  recognizeDurationMs?: number;
 }
 
 export interface MeasureTicket {

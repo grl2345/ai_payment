@@ -57,6 +57,7 @@ import {
   measureStickyConfidenceHead,
 } from "@/components/measure-table-sticky-actions";
 import { InboundReviewDialog } from "@/components/inbound-review-dialog";
+import { RecognizeDurationCell } from "@/components/recognize-duration-cell";
 import {
   countGroupedItems,
   filterGroupsByDate,
@@ -160,6 +161,10 @@ export function ImportPanel({
   const hasProcessingUploads = uploadedFiles.some((f) => f.status === "处理中");
   const uploadGroups = useMemo(
     () => groupUploadsByDate(uploadedFiles),
+    [uploadedFiles]
+  );
+  const uploadById = useMemo(
+    () => new Map(uploadedFiles.map((file) => [file.id, file])),
     [uploadedFiles]
   );
   const measureGroups = useMemo(
@@ -1109,6 +1114,7 @@ export function ImportPanel({
                         <TableHead>类型</TableHead>
                         <TableHead>大小</TableHead>
                         <TableHead>状态</TableHead>
+                        <TableHead>识别耗时</TableHead>
                         <TableHead>结果</TableHead>
                         <TableHead className="text-right">操作</TableHead>
                       </TableRow>
@@ -1165,6 +1171,12 @@ export function ImportPanel({
                                     {file.errorMessage}
                                   </p>
                                 )}
+                              </TableCell>
+                              <TableCell>
+                                <RecognizeDurationCell
+                                  upload={file}
+                                  processing={file.status === "处理中"}
+                                />
                               </TableCell>
                               <TableCell>
                                 {file.resultCount != null ? `${file.resultCount} 条` : "-"}
@@ -1269,6 +1281,7 @@ export function ImportPanel({
                         <TableHead className="min-w-[168px]">检轻时间</TableHead>
                         <TableHead className="min-w-[88px]">核对</TableHead>
                         <TableHead className="min-w-[88px]">出账</TableHead>
+                        <TableHead className="min-w-[88px]">识别耗时</TableHead>
                         <TableHead className={measureStickyConfidenceHead}>
                           识别状态
                         </TableHead>
@@ -1383,6 +1396,15 @@ export function ImportPanel({
                                   {reconcile.billed ? "已出账" : "未出账"}
                                 </Badge>
                               </TableCell>
+                              <TableCell>
+                                <RecognizeDurationCell
+                                  upload={uploadById.get(ticket.uploadId)}
+                                  processing={
+                                    ticket.ocrStatus === "识别中" ||
+                                    ticket.ocrStatus === "待识别"
+                                  }
+                                />
+                              </TableCell>
                               <TableCell className={measureStickyConfidenceCell}>
                                 <MeasureTableConfidence ticket={ticket} />
                               </TableCell>
@@ -1402,7 +1424,7 @@ export function ImportPanel({
                     </TableBody>
                   </Table>
                   <p className="text-[11px] text-muted-foreground px-2 py-1.5 border-t bg-muted">
-                    左右滑动查看字段；右侧「识别状态」「操作」固定可见
+                    左右滑动查看字段；右侧「识别状态」「操作」固定可见；识别耗时从 OCR 开始到写入结果
                   </p>
                   </div>
                   <ListPaginationBar

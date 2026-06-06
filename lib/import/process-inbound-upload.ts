@@ -23,7 +23,8 @@ async function finalizeInboundUpload(
   uploadId: string,
   insertedCount: number,
   skipped: InboundInsertDedupeResult["skipped"],
-  parsedCount: number
+  parsedCount: number,
+  recognizeDurationMs?: number
 ): Promise<{ success: boolean; error?: string }> {
   if (insertedCount === 0 && parsedCount > 0) {
     const detail = formatSkippedTickets(skipped);
@@ -35,6 +36,7 @@ async function finalizeInboundUpload(
       progress: 100,
       resultCount: 0,
       errorMessage: message,
+      recognizeDurationMs,
     });
     return { success: false, error: message };
   }
@@ -50,6 +52,7 @@ async function finalizeInboundUpload(
     progress: 100,
     resultCount: insertedCount,
     errorMessage: warning,
+    recognizeDurationMs,
   });
   return { success: true };
 }
@@ -67,8 +70,13 @@ export async function processInboundUploadJob(
 ): Promise<{ success: boolean; error?: string }> {
   const { uploadId, kind, buffer, mimeType, relativePath } = job;
   const sourceFile = buildFileUrl(relativePath);
+  const recognizeStartedAt = Date.now();
   try {
-    await updateUpload(uploadId, { progress: 25, status: "处理中" });
+    await updateUpload(uploadId, {
+      progress: 25,
+      status: "处理中",
+      recognizeStartedAt: new Date(recognizeStartedAt).toISOString(),
+    });
 
     if (kind === "excel") {
       const rawRecords = parseInboundExcel(buffer, uploadId, sourceFile);
@@ -85,7 +93,13 @@ export async function processInboundUploadJob(
       );
       const { inserted, skipped } = await addInboundRecords(records);
       await runAutoReview();
-      return finalizeInboundUpload(uploadId, inserted.length, skipped, rawRecords.length);
+      return finalizeInboundUpload(
+        uploadId,
+        inserted.length,
+        skipped,
+        rawRecords.length,
+        Date.now() - recognizeStartedAt
+      );
     }
 
     const stopPulse = pulseUploadProgress(uploadId, 35, 82);
@@ -112,7 +126,8 @@ export async function processInboundUploadJob(
       uploadId,
       inserted.length,
       skipped,
-      records.length
+      records.length,
+      Date.now() - recognizeStartedAt
     );
   } catch (error) {
     const message =
@@ -121,6 +136,7 @@ export async function processInboundUploadJob(
       status: "失败",
       progress: 100,
       errorMessage: message,
+      recognizeDurationMs: Date.now() - recognizeStartedAt,
     });
     return { success: false, error: message };
   }

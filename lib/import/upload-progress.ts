@@ -1,4 +1,5 @@
 import { getStore, updateUpload } from "@/lib/db/store";
+import { isSupabaseEnabled } from "@/lib/db/supabase";
 
 /** 云端识别期间平滑推进进度，避免长时间停在同一百分比 */
 export function pulseUploadProgress(
@@ -9,6 +10,11 @@ export function pulseUploadProgress(
 ): () => void {
   let current = start;
   void updateUpload(uploadId, { progress: current });
+
+  // 线上 Supabase：每 2.5s 读写库会拖慢 OCR 主流程，进度改由前端轮询计量单状态展示
+  if (isSupabaseEnabled()) {
+    return () => {};
+  }
 
   const timer = setInterval(() => {
     void (async () => {

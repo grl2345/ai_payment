@@ -177,6 +177,33 @@ export async function writeSplitStoreKey<K extends DataStoreKey>(
   writeSplitStoreKeyLocal(key, data);
 }
 
+async function readSplitStoreKeySupabase<K extends DataStoreKey>(
+  key: K
+): Promise<DataStore[K]> {
+  await ensureSupabaseInitialized();
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("app_data")
+    .select("data")
+    .eq("key", STORE_KEY_TO_DB[key])
+    .maybeSingle();
+  if (error) throw new Error(`读取数据库失败: ${error.message}`);
+  if (!data?.data || !Array.isArray(data.data)) {
+    return EMPTY_STORE[key];
+  }
+  return data.data as DataStore[K];
+}
+
+/** 只读某一类业务数据，避免 OCR 期间反复拉取全库 */
+export async function readSplitStoreKey<K extends DataStoreKey>(
+  key: K
+): Promise<DataStore[K]> {
+  if (isSupabaseEnabled()) {
+    return readSplitStoreKeySupabase(key);
+  }
+  return readJsonArray(DATA_FILE_PATHS[key]) as DataStore[K];
+}
+
 function readLegacyStore(): DataStore | null {
   if (!fs.existsSync(LEGACY_STORE_FILE)) return null;
   try {

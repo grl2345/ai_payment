@@ -24,8 +24,13 @@ export async function processMeasureUploadJob(job: MeasureUploadJob): Promise<{
   error?: string;
 }> {
   const { uploadId, buffer, mimeType, relativePath } = job;
+  const recognizeStartedAt = Date.now();
   try {
-    await updateUpload(uploadId, { progress: 25, status: "处理中" });
+    await updateUpload(uploadId, {
+      progress: 25,
+      status: "处理中",
+      recognizeStartedAt: new Date(recognizeStartedAt).toISOString(),
+    });
 
     const placeholderId = generateId("MT");
     const imageUrl = buildFileUrl(relativePath);
@@ -75,6 +80,7 @@ export async function processMeasureUploadJob(job: MeasureUploadJob): Promise<{
       status: "已完成",
       progress: 100,
       resultCount: 1,
+      recognizeDurationMs: Date.now() - recognizeStartedAt,
     });
     return { success: true };
   } catch (error) {
@@ -84,6 +90,7 @@ export async function processMeasureUploadJob(job: MeasureUploadJob): Promise<{
       status: "失败",
       progress: 100,
       errorMessage: message,
+      recognizeDurationMs: Date.now() - recognizeStartedAt,
     });
     return { success: false, error: message };
   }

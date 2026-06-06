@@ -63,6 +63,7 @@ import type {
 import { MeasureReviewDialog } from "@/components/measure-review-dialog";
 import { InboundReviewDialog } from "@/components/inbound-review-dialog";
 import { AiReviewPanel } from "@/components/operations/ai-review-panel";
+import { RecognizeDurationCell } from "@/components/recognize-duration-cell";
 
 type UploadKind = "measure" | "inbound" | "both";
 type DocStatus = "passed" | "pending" | "rejected";
@@ -176,6 +177,10 @@ export function DocumentCenter() {
 
   const highlightTicketNo = searchParams.get("ticketNo")?.trim() || undefined;
   const highlightMatchId = searchParams.get("matchId")?.trim() || undefined;
+  const uploadById = useMemo(
+    () => new Map(uploads.map((u) => [u.id, u])),
+    [uploads]
+  );
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -607,6 +612,7 @@ export function DocumentCenter() {
                   onDone={() => { setBatchTotal(0); setBatchUploadIds([]); }}
                 />
                 <MeasureOcrTable
+                  uploadById={uploadById}
                   measures={measures.filter((m) => {
                     const q = search.trim().toLowerCase();
                     if (!q) return true;
@@ -669,6 +675,7 @@ export function DocumentCenter() {
                   </div>
                 )}
                 <InboundOcrTable
+                  uploadById={uploadById}
                   inbounds={inbounds.filter((r) => {
                     const q = search.trim().toLowerCase();
                     if (!q) return true;
@@ -802,12 +809,14 @@ function ConfidenceBar({ value }: { value: number }) {
 
 function MeasureOcrTable({
   measures,
+  uploadById,
   onView,
   onDelete,
   onBulkDelete,
   onHumanConfirm,
 }: {
   measures: MeasureTicket[];
+  uploadById: Map<string, UploadedFileRecord>;
   onView: (t: MeasureTicket) => void;
   onDelete?: (id: string) => Promise<void>;
   onBulkDelete?: (ids: string[]) => Promise<void>;
@@ -940,6 +949,7 @@ function MeasureOcrTable({
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[108px]">识别状态</TableHead>
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[130px] text-right pr-4">置信度</TableHead>
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[110px]">上传时间</TableHead>
+              <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[88px]">识别耗时</TableHead>
               <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[160px] text-right pr-4">操作</TableHead>
             </TableRow>
           </TableHeader>
@@ -948,6 +958,7 @@ function MeasureOcrTable({
               const low = needsConfirm(m);
               const manualDone = isManualConfirmed(m);
               const processing = m.ocrStatus === "识别中" || m.ocrStatus === "待识别";
+              const upload = uploadById.get(m.uploadId);
               return (
                 <TableRow
                   key={m.id}
@@ -1025,6 +1036,9 @@ function MeasureOcrTable({
                   </TableCell>
                   <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">
                     {formatDateTime(m.createdAt) || "-"}
+                  </TableCell>
+                  <TableCell className="py-2">
+                    <RecognizeDurationCell upload={upload} processing={processing} />
                   </TableCell>
                   <TableCell className="py-2 pr-4">
                     <div className="flex items-center justify-end gap-1">
@@ -1142,11 +1156,13 @@ function MeasureOcrTable({
 // ── 采购单识别状态表 ──────────────────────────────────────────────────────────
 function InboundOcrTable({
   inbounds,
+  uploadById,
   onView,
   onDelete,
   onBulkDelete,
 }: {
   inbounds: InboundRecord[];
+  uploadById: Map<string, UploadedFileRecord>;
   onView: (r: InboundRecord) => void;
   onDelete?: (id: string) => Promise<void>;
   onBulkDelete?: (ids: string[]) => Promise<void>;
@@ -1250,6 +1266,7 @@ function InboundOcrTable({
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[140px]">供应商</TableHead>
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[108px]">识别状态</TableHead>
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[110px]">上传时间</TableHead>
+            <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[88px]">识别耗时</TableHead>
             <TableHead className="h-9 text-[11px] font-semibold text-muted-foreground w-[160px] text-right pr-4">操作</TableHead>
           </TableRow>
         </TableHeader>
@@ -1258,6 +1275,7 @@ function InboundOcrTable({
             const low = needsConfirm(r);
             const manualDone = isManualConfirmed(r);
             const isPending = r.reviewStatus === "待审核";
+            const upload = uploadById.get(r.uploadId);
             return (
               <TableRow
                 key={r.id}
@@ -1302,6 +1320,12 @@ function InboundOcrTable({
                 <TableCell className="py-2">{statusBadge(r)}</TableCell>
                 <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">
                   {formatDateTime(r.createdAt) || "-"}
+                </TableCell>
+                <TableCell className="py-2">
+                  <RecognizeDurationCell
+                    upload={upload}
+                    processing={upload?.status === "处理中"}
+                  />
                 </TableCell>
                 <TableCell className="py-2 pr-4">
                   <div className="flex items-center justify-end gap-1">

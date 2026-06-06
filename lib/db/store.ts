@@ -19,6 +19,7 @@ import {
   DATA_DIR,
   migrateLegacyStoreIfNeeded,
   readSplitStore,
+  readSplitStoreKey,
   writeSplitStore,
   writeSplitStoreKey,
 } from "@/lib/db/data-files";
@@ -91,7 +92,13 @@ export async function saveStore(store: DataStore) {
   await writeStore(store);
 }
 
-export { DATA_DIR, readSplitStore, writeSplitStore, writeSplitStoreKey };
+export {
+  DATA_DIR,
+  readSplitStore,
+  readSplitStoreKey,
+  writeSplitStore,
+  writeSplitStoreKey,
+};
 
 export function generateId(prefix: string) {
   return `${prefix}${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
@@ -114,6 +121,13 @@ export function getUploadFilePath(relativePath: string) {
 }
 
 export async function addUpload(record: UploadedFileRecord) {
+  if (isSupabaseEnabled()) {
+    const uploads = [...(await readSplitStoreKey("uploads"))];
+    uploads.unshift(record);
+    await writeSplitStoreKey("uploads", uploads);
+    return record;
+  }
+
   const store = await readStore();
   store.uploads.unshift(record);
   await writeStore(store);
@@ -124,6 +138,15 @@ export async function updateUpload(
   id: string,
   patch: Partial<UploadedFileRecord>
 ) {
+  if (isSupabaseEnabled()) {
+    const uploads = [...(await readSplitStoreKey("uploads"))];
+    const index = uploads.findIndex((item) => item.id === id);
+    if (index === -1) return null;
+    uploads[index] = { ...uploads[index], ...patch };
+    await writeSplitStoreKey("uploads", uploads);
+    return uploads[index];
+  }
+
   const store = await readStore();
   const index = store.uploads.findIndex((item) => item.id === id);
   if (index === -1) return null;
