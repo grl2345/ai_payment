@@ -29,6 +29,7 @@ import {
   X,
   Sparkles,
 } from "lucide-react";
+import { uploadMeasureImagesClient } from "@/lib/import/client-measure-upload";
 import {
   collectFilesFromDataTransfer,
   MEASURE_UPLOAD_MAX,
@@ -415,20 +416,20 @@ export function ImportPanel({
           : `已上传 ${images.length} 张，AI 正在识别…${skippedNote}`,
     });
 
-    const formData = new FormData();
-    images.forEach((file) => formData.append("files", file));
-
     try {
-      const response = await fetch("/api/import/measure?async=true", {
-        method: "POST",
-        body: formData,
+      const { uploadIds, compressed } = await uploadMeasureImagesClient(images, {
+        async: true,
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "计量单上传失败");
+      if (compressed) {
+        setMessage({
+          type: "success",
+          text:
+            images.length === 1
+              ? "已上传（大图已自动压缩），AI 正在识别…"
+              : `已上传 ${images.length} 张（大图已自动压缩），AI 正在识别…${skippedNote}`,
+        });
       }
 
-      const uploadIds = (data.uploadIds ?? []) as string[];
       pendingMeasureUploadIdsRef.current = uploadIds;
       await loadData();
 
@@ -440,13 +441,6 @@ export function ImportPanel({
         });
         setUploading(false);
         return;
-      }
-
-      if (data.rejected?.length) {
-        setMessage({
-          type: "success",
-          text: `${uploadIds.length} 张已进入识别队列${skippedNote}，${data.rejected.length} 张格式无效已跳过`,
-        });
       }
     } catch (error) {
       measureBatchFinalizedRef.current = true;

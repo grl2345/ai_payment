@@ -40,6 +40,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, normalizeFileUrl, parseFetchJsonResponse } from "@/lib/utils";
+import { uploadMeasureImagesClient } from "@/lib/import/client-measure-upload";
+import { compressImageForUpload } from "@/lib/import/compress-upload-image";
 import {
   collectFilesFromDataTransfer,
   MEASURE_UPLOAD_MAX,
@@ -198,20 +200,18 @@ export function DocumentCenter() {
       return;
     }
     setUploading(true);
-    const formData = new FormData();
-    picked.images.forEach((f) => formData.append("files", f));
     try {
-      const res = await fetch("/api/import/measure?async=true", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await parseFetchJsonResponse<{ error?: string; uploadIds?: string[] }>(res);
-      if (!res.ok) throw new Error(data.error || "上传失败");
-      // 记录本次批次信息，用于进度条显示
-      const ids: string[] = data.uploadIds ?? [];
+      const { uploadIds: ids, compressed } = await uploadMeasureImagesClient(
+        picked.images,
+        { async: true }
+      );
       setBatchTotal(picked.images.length);
       setBatchUploadIds(ids);
-      toast.success(`已上传 ${picked.images.length} 张计量单，AI 识别中`);
+      toast.success(
+        compressed
+          ? `已上传 ${picked.images.length} 张计量单（大图已自动压缩），AI 识别中`
+          : `已上传 ${picked.images.length} 张计量单，AI 识别中`
+      );
       await fetch("/api/import?pipeline=true", { method: "POST" });
       setListTab("measure");
       await loadData();
@@ -237,7 +237,10 @@ export function DocumentCenter() {
       // 图片采购单：异步识别，立即返回 uploadId，显示进度横幅
       setUploading(true);
       try {
-        const res = await fetch("/api/import/inbound?async=true", { method: "POST", body: formData });
+        const compressed = await compressImageForUpload(file);
+        const imageForm = new FormData();
+        imageForm.append("file", compressed);
+        const res = await fetch("/api/import/inbound?async=true", { method: "POST", body: imageForm });
         const data = await parseFetchJsonResponse<{ error?: string; uploadId?: string }>(res);
         if (!res.ok) throw new Error(data.error || "上传失败");
         setInboundPendingUpload({ uploadId: data.uploadId!, fileName: file.name });
