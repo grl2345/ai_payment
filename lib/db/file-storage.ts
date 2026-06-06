@@ -26,7 +26,15 @@ export async function saveUploadFile(
     const { error } = await supabase.storage
       .from(SUPABASE_UPLOAD_BUCKET)
       .upload(normalized, buffer, { upsert: true, contentType: guessContentType(normalized) });
-    if (error) throw new Error(`文件上传失败: ${error.message}`);
+    if (error) {
+      const msg = error.message;
+      if (msg === "Not Found" || msg.includes("Bucket not found")) {
+        throw new Error(
+          `文件上传失败：Supabase Storage 中找不到 bucket「${SUPABASE_UPLOAD_BUCKET}」，请在 Supabase → Storage 创建同名 Private bucket（须与 API URL 同一项目）`
+        );
+      }
+      throw new Error(`文件上传失败: ${msg}`);
+    }
     return;
   }
   assertRemoteStorageConfigured("保存上传文件");
